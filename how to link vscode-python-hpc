@@ -1,0 +1,149 @@
+# Using VS Code + Jupyter with HPC (Flye Nanopore Assembly)
+
+This guide explains how to link **VS Code + Jupyter Notebook** to a university HPC cluster and run Python scripts (e.g., Flye, Porechop) efficiently.
+
+---
+
+## 1. Prerequisites
+
+1. **VS Code** installed on your local machine.  
+2. **Remote SSH extension** in VS Code.  
+3. **Jupyter extension** in VS Code.  
+4. HPC login credentials (`nkhan3@login-bi`) and access to `conda`.
+
+---
+
+## 2. Connect VS Code to HPC via SSH
+
+1. Open **VS Code** → `Ctrl+Shift+P` → **Remote-SSH: Connect to Host…**  
+2. Add a new SSH target, e.g.:
+
+```bash
+ssh nkhan3@login-bi.rds.ac.uk
+
+
+# VS Code opens a remote window — your terminal, file explorer, and extensions now run on the HPC
+
+3. Set up Python environment on HPC for Jupyter
+
+On the remote terminal:
+
+# Load conda module
+module load miniforge/3
+
+# Activate your environment
+conda activate S4
+
+# Check Python version
+python --version
+4. Launch a Jupyter Notebook on HPC
+
+Navigate to your notebooks folder:
+
+cd ~/notebooks
+
+Start Jupyter without opening a browser:
+
+jupyter notebook --no-browser --port=8888
+
+The terminal prints a URL with a token:
+
+http://localhost:8888/?token=abc123...
+5. Forward HPC port to local machine
+
+On your local terminal:
+
+ssh -L 8888:localhost:8888 nkhan3@login-bi.rds.ac.uk
+
+This forwards HPC port 8888 → local port 8888.
+
+Open your browser and go to:
+
+http://localhost:8888
+
+5. Forward HPC port to local machine
+
+On your local terminal:
+
+ssh -L 8888:localhost:8888 nkhan3@login-bi.rds.ac.uk
+
+This forwards HPC port 8888 → local port 8888.
+
+Open your browser and go to:
+
+http://localhost:8888
+
+You can now use Jupyter running on HPC from your local machine.
+
+6. Use VS Code Jupyter Extension (Optional)
+
+Open VS Code → Jupyter extension → Attach to Remote Jupyter Server
+
+Paste the URL with token from step 4.
+
+You can now edit notebooks in VS Code, but execution happens on the HPC.
+
+7. Test your Python scripts on HPC
+
+Create a simple notebook test.ipynb:
+
+# Test Python environment
+import sys
+import os
+print("Python version:", sys.version)
+print("Current working directory:", os.getcwd())
+
+# Optional: test Flye command
+import subprocess
+subprocess.run(["flye", "--help"])
+
+Run the cell → executes on HPC.
+
+8. Writing and submitting long jobs from Python
+
+For heavy jobs (Flye, Porechop), generate PBS scripts directly from a notebook:
+
+import subprocess
+
+pbs_script = "flye_job.pbs"
+
+with open(pbs_script, "w") as f:
+    f.write("""#!/bin/bash
+#PBS -l select=1:ncpus=16:mem=64gb
+#PBS -l walltime=48:00:00
+cd $PBS_O_WORKDIR
+module load miniforge/3
+conda activate S4
+flye --nano-raw reads.fastq --out-dir flye_output --genome-size 5m --threads 16
+""")
+
+# Submit the job
+subprocess.run(["qsub", pbs_script])
+
+Monitor job progress using:
+
+qstat -u nkhan3
+tail -f flye_output.log
+9. Tips for HPC Python scripting
+
+Always load modules / activate conda at the top of scripts or notebooks.
+
+Do not run long Flye jobs interactively in Jupyter — use PBS jobs.
+
+Use $TMPDIR for temporary files to speed up computation.
+
+Use sorted BAM files if visualizing reads in IGV (instead of large FASTQ).
+
+10. Summary Workflow
+
+VS Code ↔ SSH → HPC
+
+Jupyter server on HPC → local port forwarding
+
+Python notebook executes code on HPC
+
+Submit PBS jobs from notebook for heavy computation
+
+Monitor jobs and inspect results via notebook or IG
+
+You can now use Jupyter running on HPC from your local machine.
